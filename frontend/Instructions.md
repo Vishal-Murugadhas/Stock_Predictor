@@ -1,0 +1,4 @@
+Design.md is the basic design i want for my website so go through it very carefully. 
+What i am trying to build a website (The stock predictor) I want Three pages Home page that highlights what is Nifty50 (basically an about Nifty50 its history and what not with its statistics) The next page should be The predictor where the user can enter stocks and the model predicts wether it will go up or down along with the accuracy score and graph of the stock the third page Will contain the top stocks of Nifty50 make sure the design should remain the same as that i have given in design.md just change the text and stuff so it alligns with the website. 
+For now dont create the backend and apis i will create it later and dont touch the ml model i have created (Untitled.ipynb) 
+Just create the frontend based on the given instructions 

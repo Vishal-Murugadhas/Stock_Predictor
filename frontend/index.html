@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indian Stock Predictor | Market Cosmos</title>
+  <meta name="description" content="AI-powered Indian stock market predictor covering all NSE and BSE listed stocks. Powered by logistic regression and quantitative analysis.">
+  <link rel="stylesheet" href="index.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="app-container">
+
+    <!-- Navigation Header -->
+    <header>
+      <a href="#" class="logo" id="logo-btn">
+        <svg viewBox="0 0 24 24">
+          <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" />
+          <line x1="12" y1="2" x2="12" y2="22" />
+          <line x1="2" y1="8.5" x2="22" y2="15.5" />
+          <line x1="2" y1="15.5" x2="22" y2="8.5" />
+        </svg>
+        <span>India Markets</span>
+      </a>
+
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#" class="nav-link active" data-page="home">Home</a></li>
+          <li><a href="#" class="nav-link" data-page="predictor">Predictor</a></li>
+          <li><a href="#" class="nav-link" data-page="stocks">Top Stocks</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-cta">
+        <button class="btn-ghost" id="nav-cta-btn" data-page="predictor">Predict Now</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+
+      <!-- ═══ HOME PAGE ═══ -->
+      <section id="home-page" class="page-section active">
+        <div class="grid-50-50">
+
+          <!-- Left: Hero (sticky) -->
+          <div class="hero-container sticky-column">
+            <span class="eyebrow-kicker">Indian Stock Market Predictor</span>
+            <h1 class="hero-headline">Decode the Indian market.</h1>
+            <p class="body-paragraph">
+              India's capital markets span over 7,400 companies across the BSE and NSE — the world's largest by listed entity count. Powered by lagged returns, momentum metrics, and logistic regression, we translate decades of price history into clean directional signals.
+            </p>
+
+            <div class="stats-row">
+              <div class="stat-item">
+                <span class="stat-num" id="live-sensex-price">79,486.32</span>
+                <span class="stat-change" id="live-sensex-change">—</span>
+                <span class="stat-label"><span class="live-dot"></span>BSE Sensex</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" id="live-nifty-price">24,056.00</span>
+                <span class="stat-change" id="live-nifty-change">—</span>
+                <span class="stat-label"><span class="live-dot"></span>NSE Nifty 50</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num">$4.5T</span>
+                <span class="stat-label">Market Cap (USD)</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num">7,400+</span>
+                <span class="stat-label">Listed Companies</span>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="home-cta-btn" data-page="predictor">Launch Predictor</button>
+          </div>
+
+          <!-- Right: Timeline (scrollable) -->
+          <div class="timeline-container">
+            <span class="eyebrow-kicker">History of Indian Capital Markets</span>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">1875</div>
+                <div class="timeline-title">BSE Founded — Asia's First</div>
+                <p class="body-paragraph-sm">The Bombay Stock Exchange established under a banyan tree on Dalal Street — the oldest stock exchange in Asia and one of the first in the world.</p>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">1956</div>
+                <div class="timeline-title">Securities Contracts Act</div>
+                <p class="body-paragraph-sm">The Indian government formalised regulation of securities trading, setting the legal foundation for modern capital markets.</p>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">1988–1992</div>
+                <div class="timeline-title">SEBI & NSE Born</div>
+                <p class="body-paragraph-sm">SEBI was established as the regulatory authority in 1988 (statutory powers in 1992). The National Stock Exchange launched in 1992, introducing electronic order-matching and transforming market transparency.</p>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2000</div>
+                <div class="timeline-title">Derivatives Era Begins</div>
+                <p class="body-paragraph-sm">NSE launched index futures and options on Nifty 50, ushering in a new era of risk management. India's derivatives market now ranks among the world's largest by contract volume.</p>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2008</div>
+                <div class="timeline-title">Global Crisis — 60% Drawdown</div>
+                <p class="body-paragraph-sm">The Sensex fell from 21,000 to under 8,000 during the global financial crisis — one of the steepest corrections in Indian market history, followed by a V-shaped recovery.</p>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2020</div>
+                <div class="timeline-title">Covid Crash & Retail Revolution</div>
+                <p class="body-paragraph-sm">Markets collapsed 40% in 30 days in March 2020, then rallied 100%+ within a year. Demat account openings surged from 40M to 130M+ as retail investors flooded the market.</p>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-year">2024–2026</div>
+                <div class="timeline-title">All-Time Highs & Quantitative Age</div>
+                <p class="body-paragraph-sm">Sensex crossed 80,000 and Nifty 24,000. India became the world's 4th-largest equity market. Algorithmic trading accounts for over 50% of NSE volume, with ML models driving institutional strategies.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ═══ PREDICTOR PAGE ═══ -->
+      <section id="predictor-page" class="page-section">
+        <div class="predictor-wrapper">
+
+          <!-- Controls -->
+          <div class="predictor-controls hairline-card">
+            <span class="eyebrow-kicker">Model Configuration</span>
+
+            <div class="form-group">
+              <label for="stock-search-input" class="form-label">Search Stock (NSE / BSE)</label>
+              <div class="autocomplete-wrapper">
+                <input
+                  type="text"
+                  id="stock-search-input"
+                  class="search-input autocomplete-input"
+                  placeholder="e.g. RELIANCE, Infosys, Zomato…"
+                  autocomplete="off"
+                >
+                <ul id="autocomplete-list" class="autocomplete-list"></ul>
+              </div>
+              <span id="selected-ticker-badge" class="ticker-badge" style="display:none;"></span>
+            </div>
+
+            <div class="form-group">
+              <span class="form-label">Calculated Model Inputs</span>
+              <div class="stock-params-list">
+                <div class="stock-param-item">
+                  <span>Exchange</span>
+                  <span class="stock-param-value" id="param-exchange">NSE</span>
+                </div>
+                <div class="stock-param-item">
+                  <span>Sector</span>
+                  <span class="stock-param-value" id="param-sector">—</span>
+                </div>
+                <div class="stock-param-item">
+                  <span>Price (INR)</span>
+                  <span class="stock-param-value" id="param-price">—</span>
+                </div>
+                <div class="stock-param-item">
+                  <span>Volatility (5d)</span>
+                  <span class="stock-param-value" id="param-volatility">—</span>
+                </div>
+                <div class="stock-param-item">
+                  <span>Momentum (10d)</span>
+                  <span class="stock-param-value" id="param-momentum">—</span>
+                </div>
+                <div class="stock-param-item">
+                  <span>Volume Change</span>
+                  <span class="stock-param-value" id="param-volchange">—</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="run-prediction-btn">Analyze Stock Trend</button>
+          </div>
+
+          <!-- Output -->
+          <div class="predictor-output-pane hairline-card">
+            <div id="output-placeholder" class="predictor-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" />
+                <line x1="12" y1="2" x2="12" y2="22" />
+                <line x1="2" y1="8.5" x2="22" y2="15.5" />
+                <line x1="2" y1="15.5" x2="22" y2="8.5" />
+              </svg>
+              <h3 class="body-paragraph" style="margin-bottom:var(--spacing-12);font-weight:var(--font-weight-semibold);">Awaiting Analysis</h3>
+              <p class="body-paragraph-sm">Search for any NSE or BSE listed stock and trigger the quantitative analysis model.</p>
+            </div>
+
+            <div id="output-loading" class="loading-view">
+              <div class="loading-spinner"></div>
+              <span id="loading-text" class="loading-status">Constructing Lags & Rolling Features…</span>
+            </div>
+
+            <div id="output-dashboard" class="result-dashboard">
+              <div class="result-header">
+                <div class="hairline-card result-card">
+                  <span class="eyebrow-kicker">Predicted Direction</span>
+                  <span id="predicted-signal" class="prediction-signal up">UP</span>
+                </div>
+                <div class="hairline-card result-card">
+                  <span class="eyebrow-kicker">Model Performance</span>
+                  <div class="accuracy-radial-container">
+                    <span class="accuracy-percent">76.94%</span>
+                    <span class="accuracy-sub">Test Accuracy (Logistic Regression)</span>
+                  </div>
+                </div>
+              </div>
+              <div class="hairline-card" style="padding:var(--spacing-18);">
+                <span class="eyebrow-kicker" style="margin-bottom:var(--spacing-12);">ML Strategy vs Buy &amp; Hold — Cumulative Returns</span>
+                <div class="chart-container">
+                  <canvas id="predictor-chart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ═══ TOP STOCKS PAGE ═══ -->
+      <section id="stocks-page" class="page-section">
+        <span class="eyebrow-kicker">NSE &amp; BSE Listed Companies</span>
+        <h2 class="section-title">Indian Market Leaders</h2>
+
+        <div class="search-wrapper">
+          <input type="text" id="stocks-search" class="search-input" placeholder="Search by ticker, company, sector, or exchange…">
+        </div>
+
+        <div class="hairline-card stocks-table-container" style="position:relative;">
+          <div id="stocks-loading-overlay" class="stocks-loading-overlay">
+            <div class="loading-spinner" style="width:28px;height:28px;"></div>
+            <span class="loading-status" style="font-size:12px;">Fetching live prices from NSE / BSE…</span>
+          </div>
+          <table class="stocks-table" id="nifty-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Company Name</th>
+                <th>Exchange</th>
+                <th>Sector</th>
+                <th>Price (INR)</th>
+                <th>24h Change</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      <p class="body-paragraph-sm">&copy; 2026 India Markets Predictor. For simulation &amp; educational purposes only. Not financial advice.</p>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
