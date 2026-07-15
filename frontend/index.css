@@ -910,18 +910,25 @@ footer p {
 
 /* Responsive Scaling */
 @media (max-width: 992px) {
+  main {
+    padding-top: 80px;
+    padding-left: var(--spacing-18);
+    padding-right: var(--spacing-18);
+  }
+
   .grid-50-50 {
     grid-template-columns: 1fr;
     gap: var(--spacing-36);
   }
   
-  .predictor-wrapper {
-    grid-template-columns: 1fr;
+  .sticky-column {
+    position: relative;
+    top: auto;
   }
   
   .hero-headline {
-    font-size: var(--text-display);
-    line-height: var(--leading-display);
+    font-size: clamp(32px, 6vw, 60px);
+    line-height: 1.1;
   }
 
   .grid-3-col {
@@ -932,20 +939,61 @@ footer p {
 
 @media (max-width: 768px) {
   header {
-    padding: var(--spacing-18) var(--spacing-24);
-  }
-  
-  .nav-links {
-    display: none; /* Can add dropdown toggle if required, kept minimal for SPA */
+    padding: var(--spacing-12) var(--spacing-18);
   }
 
-  .hero-headline {
-    font-size: var(--text-heading-lg);
-    line-height: var(--leading-heading-lg);
+  .logo span {
+    font-size: 13px;
+  }
+  
+  .nav-cta {
+    display: none; /* Hide CTA button on mobile to fit navigation items */
+  }
+
+  .nav-links {
+    display: flex;
+    gap: var(--spacing-12);
+  }
+
+  .nav-link {
+    font-size: 12px;
+    padding: 6px 4px;
+  }
+
+  .result-header {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-12);
+  }
+
+  .chart-container {
+    height: 260px;
+  }
+
+  .search-wrapper {
+    max-width: 100%;
   }
 
   .stats-row {
-    flex-direction: column;
-    gap: var(--spacing-18);
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--spacing-12) var(--spacing-18);
+    margin-top: var(--spacing-18);
+    margin-bottom: var(--spacing-18);
+  }
+
+  .stat-item {
+    flex: 1 1 40%;
+    min-width: 120px;
+  }
+
+  .stat-num {
+    font-size: clamp(20px, 5vw, 28px);
+    min-width: auto;
+  }
+
+  .stocks-table th, 
+  .stocks-table td {
+    padding: var(--spacing-12) var(--spacing-8);
+    font-size: 12px;
   }
 }
