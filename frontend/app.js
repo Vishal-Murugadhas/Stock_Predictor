@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // AUTO-DETECT: uses Render backend in production, localhost in development
   const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8000'
-    : 'https://stocksense-api.onrender.com';  // ← UPDATE this after Render deployment
+    : 'https://stock-predictor-gju5.onrender.com';
 
   // Gentle price tick on top of a real base
   function tickLive(elId, basePrice, spread) {
