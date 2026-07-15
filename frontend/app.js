@@ -32,7 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // 2. LIVE INDEX PRICES — FETCHED FROM BACKEND
   // ==========================================
-  const API_BASE = 'http://localhost:8000';
+  // AUTO-DETECT: uses Render backend in production, localhost in development
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : 'https://stocksense-api.onrender.com';  // ← UPDATE this after Render deployment
 
   // Gentle price tick on top of a real base
   function tickLive(elId, basePrice, spread) {
@@ -383,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fetchLiveStockPrices();
+  setInterval(fetchLiveStockPrices, 5 * 60 * 1000);
 
   const stocksSearchInput = document.getElementById('stocks-search');
   if (stocksSearchInput) {
@@ -401,24 +405,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // 5. BUILD STOCK META MAP
+  // 5. STOCK META CACHE (populated from real backend calls)
   // ==========================================
   const stockMeta = {};
-  stocksData.forEach(stock => {
-    const vol   = (0.008 + Math.abs(stock.change) * 0.003 + Math.random() * 0.003).toFixed(4);
-    const mom   = (stock.change * 0.05 + (Math.random() - 0.5) * 0.005).toFixed(4);
-    const rawVC = (stock.change * 14 + (Math.random() - 0.5) * 6).toFixed(2);
-    const vcS   = parseFloat(rawVC) >= 0 ? '+' : '';
-    stockMeta[stock.ticker] = {
-      exchange:  stock.exchange,
-      sector:    stock.sector,
-      price:     `₹${stock.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      vol, mom,
-      change:    `${vcS}${rawVC}%`,
-      direction: stock.change >= 0 ? 'UP' : 'DOWN',
-      accuracy:  (73.5 + Math.abs(stock.change) * 0.8 + Math.random() * 3).toFixed(2) + '%',
-    };
-  });
+  // We no longer pre-build mock data — real values come from the ML predictor backend
 
   // ==========================================
   // 6. YAHOO FINANCE AUTOCOMPLETE SEARCH
@@ -440,24 +430,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let debounceTimer   = null;
   let currentQuery    = '';
 
-  // Generate deterministic-ish mock model inputs for any stock
-  function generateMockMeta(ticker, exchange, sector) {
-    const seed   = ticker.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const rng    = (min, max) => min + ((seed * 9301 + 49297) % 233280) / 233280 * (max - min);
-    const price  = Math.round(rng(80, 12000) * 100) / 100;
-    const chg    = (rng(-3, 3)).toFixed(2);
-    const vol    = rng(0.008, 0.045).toFixed(4);
-    const mom    = (parseFloat(chg) * 0.05).toFixed(4);
-    const vc     = (parseFloat(chg) * 14).toFixed(2);
-    const vcSign = parseFloat(vc) >= 0 ? '+' : '';
-    return {
-      exchange, sector: sector || 'Equity',
-      price:     `₹${price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      vol, mom,
-      change:    `${vcSign}${vc}%`,
-      direction: parseFloat(chg) >= 0 ? 'UP' : 'DOWN',
-      accuracy:  (73.5 + Math.abs(parseFloat(chg)) * 0.8 + rng(0, 3)).toFixed(2) + '%',
-    };
+  // Fetch real model inputs from the ML backend
+  async function fetchRealModelInputs(ticker, exchange, sector) {
+    // Determine yfinance symbol
+    let symbol = ticker;
+    if (!symbol.endsWith('.NS') && !symbol.endsWith('.BO')) {
+      const stockInfo = stocksData.find(s => s.ticker === ticker);
+      const exch = exchange || (stockInfo ? stockInfo.exchange : 'NSE');
+      symbol = (exch.includes('BSE') && !exch.includes('NSE')) ? ticker + '.BO' : ticker + '.NS';
+    }
+    const res  = await fetch(`${API_BASE}/predict`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ symbol })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
   }
 
   // Map Yahoo Finance exchange codes to display labels
@@ -470,20 +458,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function searchYahooFinance(query) {
-    const encoded = encodeURIComponent(
-      `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=IN&quotesCount=14&enableFuzzyQuery=false&enableCb=true`
-    );
-    const proxyUrl = `https://corsproxy.io/?${encoded}`;
-    const res = await fetch(proxyUrl, { headers: { 'x-requested-with': 'XMLHttpRequest' } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const quotes = (data.quotes || []).filter(q => q.quoteType === 'EQUITY');
+    const yahooUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=IN&quotesCount=20&enableFuzzyQuery=true&enableCb=true`;
 
-    // Sort: Indian stocks (.NS/.BO) first
+    // Try two CORS proxies in sequence
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
+    ];
+
+    let data = null;
+    for (const proxyUrl of proxies) {
+      try {
+        const res = await fetch(proxyUrl, { headers: { 'x-requested-with': 'XMLHttpRequest' } });
+        if (res.ok) { data = await res.json(); break; }
+      } catch (_) { /* try next proxy */ }
+    }
+    if (!data) throw new Error('All proxies failed');
+
+    // ONLY show NSE (.NS) and BSE (.BO) listed Indian equities
+    const quotes = (data.quotes || []).filter(q => {
+      if (!q.symbol || q.quoteType !== 'EQUITY') return false;
+      const sym = q.symbol.toUpperCase();
+      return sym.endsWith('.NS') || sym.endsWith('.BO');
+    });
+
+    // .NS first, then .BO
     quotes.sort((a, b) => {
-      const aIN = a.symbol.endsWith('.NS') || a.symbol.endsWith('.BO') ? 0 : 1;
-      const bIN = b.symbol.endsWith('.NS') || b.symbol.endsWith('.BO') ? 0 : 1;
-      return aIN - bIN;
+      const aScore = a.symbol.toUpperCase().endsWith('.NS') ? 0 : 1;
+      const bScore = b.symbol.toUpperCase().endsWith('.NS') ? 0 : 1;
+      return aScore - bScore;
     });
 
     return quotes.map(q => ({
@@ -535,19 +538,20 @@ document.addEventListener('DOMContentLoaded', () => {
     tickerBadge.textContent   = `✓ ${stock.ticker} · ${stock.exchange}`;
     tickerBadge.style.display = 'inline-flex';
 
-    // Use local meta if available, otherwise generate mock inputs
-    const meta = stockMeta[stock.ticker] || generateMockMeta(stock.ticker, stock.exchange, stock.sector);
-    // Cache it so renderResult can use it
-    stockMeta[stock.ticker] = meta;
+    // Show static exchange / sector immediately
+    paramExchange.textContent = stock.exchange;
+    paramSector.textContent   = stock.sector || '—';
 
-    paramExchange.textContent   = meta.exchange;
-    paramSector.textContent     = meta.sector;
-    paramPrice.textContent      = meta.price;
-    paramVolatility.textContent = meta.vol;
-    paramMomentum.textContent   = meta.mom;
-    paramMomentum.style.color   = parseFloat(meta.mom) >= 0
-      ? 'var(--color-lichen)' : 'var(--color-plum-voltage)';
-    paramVolChange.textContent  = meta.change;
+    // Show loading state for the ML-computed fields
+    const loadingStyle = 'color:var(--color-smoke);font-style:italic;';
+    paramPrice.setAttribute('style', loadingStyle);
+    paramPrice.textContent      = 'Loading…';
+    paramVolatility.setAttribute('style', loadingStyle);
+    paramVolatility.textContent = 'Loading…';
+    paramMomentum.setAttribute('style', loadingStyle);
+    paramMomentum.textContent   = 'Loading…';
+    paramVolChange.setAttribute('style', loadingStyle);
+    paramVolChange.textContent  = 'Loading…';
 
     // Reset output pane
     const dashboard   = document.getElementById('output-dashboard');
@@ -557,6 +561,50 @@ document.addEventListener('DOMContentLoaded', () => {
       dashboard.style.display  = 'none';
       placeholder.style.display = 'flex';
     }
+
+    // If we already have cached real data, populate immediately
+    if (stockMeta[stock.ticker] && stockMeta[stock.ticker]._real) {
+      applyRealMeta(stockMeta[stock.ticker]);
+      return;
+    }
+
+    // Otherwise fire a background fetch to get real model inputs
+    fetchRealModelInputs(stock.ticker, stock.exchange, stock.sector)
+      .then(data => {
+        if (data.error) {
+          // Restore UI with error hint
+          paramPrice.textContent      = '—';
+          paramVolatility.textContent = '—';
+          paramMomentum.textContent   = '—';
+          paramVolChange.textContent  = '—';
+          [paramPrice, paramVolatility, paramMomentum, paramVolChange].forEach(el => el.removeAttribute('style'));
+          return;
+        }
+        // Cache for re-use when the Analyze button is clicked
+        stockMeta[stock.ticker] = { _real: true, _data: data };
+        // Only update UI if this stock is still selected
+        if (selectedTicker === stock.ticker) applyRealMeta(stockMeta[stock.ticker]);
+      })
+      .catch(err => {
+        console.warn('Model input pre-fetch failed:', err);
+        paramPrice.textContent      = '—';
+        paramVolatility.textContent = '—';
+        paramMomentum.textContent   = '—';
+        paramVolChange.textContent  = '—';
+        [paramPrice, paramVolatility, paramMomentum, paramVolChange].forEach(el => el.removeAttribute('style'));
+      });
+  }
+
+  function applyRealMeta(meta) {
+    const data = meta._data;
+    [paramPrice, paramVolatility, paramMomentum, paramVolChange].forEach(el => el.removeAttribute('style'));
+    paramPrice.textContent = '₹' + data.current_price.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    paramVolatility.textContent = data.volatility.toFixed(4);
+    const momSign = data.momentum >= 0 ? '+' : '';
+    paramMomentum.textContent = momSign + data.momentum.toFixed(4);
+    paramMomentum.style.color = data.momentum >= 0 ? 'var(--color-lichen)' : 'var(--color-plum-voltage)';
+    const vcSign = data.vol_change >= 0 ? '+' : '';
+    paramVolChange.textContent = vcSign + data.vol_change.toFixed(2) + '%';
   }
 
   if (searchInput) {
@@ -576,15 +624,31 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           const results = await searchYahooFinance(q);
           if (q !== currentQuery) return; // stale
-          openList(results);
+          if (results.length > 0) {
+            openList(results);
+          } else {
+            // Yahoo returned 0 NSE/BSE results — fall through to local
+            throw new Error('No NSE/BSE results from Yahoo');
+          }
         } catch (err) {
-          console.warn('Yahoo Finance search failed:', err);
-          // Graceful fallback: local filter
-          const local = stocksData.filter(s =>
-            s.ticker.toLowerCase().includes(q.toLowerCase()) ||
-            s.name.toLowerCase().includes(q.toLowerCase()) ||
-            s.sector.toLowerCase().includes(q.toLowerCase())
-          );
+          console.warn('Yahoo Finance search failed, using local fallback:', err);
+          // Graceful fallback: search local NSE/BSE database by ticker OR name OR sector
+          const qLower = q.toLowerCase();
+          const local = stocksData
+            .filter(s =>
+              s.ticker.toLowerCase().includes(qLower) ||
+              s.name.toLowerCase().includes(qLower) ||
+              s.sector.toLowerCase().includes(qLower)
+            )
+            .map(s => {
+              const isBseOnly = s.exchange === 'BSE';
+              return {
+                ticker:   s.ticker + (isBseOnly ? '.BO' : '.NS'),
+                name:     s.name,
+                exchange: isBseOnly ? 'BSE' : 'NSE',
+                sector:   s.sector,
+              };
+            });
           openList(local);
         }
       }, 320);
@@ -638,18 +702,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Format ticker for backend (yfinance requires .NS or .BO for Indian stocks)
-      let symbolToSend = selectedTicker;
-      if (!symbolToSend.endsWith('.NS') && !symbolToSend.endsWith('.BO')) {
-        const stockInfo = stocksData.find(s => s.ticker === selectedTicker);
-        const exchange = stockInfo ? stockInfo.exchange : 'NSE';
-        if (exchange.includes('BSE') && !exchange.includes('NSE')) {
-          symbolToSend += '.BO';
-        } else {
-          symbolToSend += '.NS';
-        }
-      }
-
       placeholderView.style.display = 'none';
       dashboardView.classList.remove('active');
       dashboardView.style.display   = 'none';
@@ -672,6 +724,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }, 600);
 
+      // If the background pre-fetch on stock selection already has real data cached, use it
+      const cached = stockMeta[selectedTicker];
+      if (cached && cached._real && cached._data) {
+        const minWait = Math.max(0, 1800 - (stepIndex * 600));
+        setTimeout(() => {
+          clearInterval(stepTimer);
+          renderResult(cached._data);
+        }, minWait);
+        return;
+      }
+
+      // Format ticker for backend (yfinance requires .NS or .BO for Indian stocks)
+      let symbolToSend = selectedTicker;
+      if (!symbolToSend.endsWith('.NS') && !symbolToSend.endsWith('.BO')) {
+        const stockInfo = stocksData.find(s => s.ticker === selectedTicker);
+        const exchange = stockInfo ? stockInfo.exchange : 'NSE';
+        symbolToSend += (exchange.includes('BSE') && !exchange.includes('NSE')) ? '.BO' : '.NS';
+      }
+
       fetch(`${API_BASE}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -688,6 +759,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (data.error) {
             showAPIError(data.error);
           } else {
+            // Cache the result
+            stockMeta[selectedTicker] = { _real: true, _data: data };
             renderResult(data);
           }
         }, timeToWait);
@@ -743,10 +816,17 @@ document.addEventListener('DOMContentLoaded', () => {
       vcEl.textContent = (data.vol_change >= 0 ? '+' : '') + data.vol_change.toFixed(2) + '%';
     }
 
-    renderChart(data);
+    // Defer chart rendering slightly to allow DOM layout & dimensions to resolve (prevents 0-size canvas bug)
+    setTimeout(() => {
+      renderChart(data);
+    }, 100);
   }
 
   function renderChart(data) {
+    if (typeof Chart === 'undefined') {
+      console.warn('Chart.js is not loaded. Cannot render cumulative returns graph.');
+      return;
+    }
     const ctx = document.getElementById('predictor-chart');
     if (!ctx) return;
     if (chartInstance) chartInstance.destroy();

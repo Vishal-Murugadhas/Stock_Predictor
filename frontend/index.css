@@ -229,14 +229,15 @@ main {
 
 /* Typography styles */
 .hero-headline {
-  font-size: var(--text-hero);
+  font-size: clamp(42px, 5.5vw, 80px);
   font-weight: var(--font-weight-extralight);
-  line-height: var(--leading-hero);
+  line-height: 1.0;
   letter-spacing: var(--tracking-hero);
   color: var(--color-bone);
   margin-bottom: var(--spacing-24);
   text-transform: uppercase;
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .display-headline {
@@ -279,7 +280,7 @@ main {
   line-height: var(--leading-subheading);
   letter-spacing: var(--tracking-subheading);
   color: var(--color-ash);
-  max-width: 60ch;
+  max-width: min(60ch, 100%);
   margin-bottom: var(--spacing-30);
 }
 
@@ -357,9 +358,14 @@ main {
 /* Grid Layouts */
 .grid-50-50 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--spacing-60);
   align-items: start;
+}
+
+.grid-50-50 > * {
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .sticky-column {
@@ -367,6 +373,7 @@ main {
   position: sticky;
   top: 140px;
   align-self: start;
+  min-width: 0;
 }
 
 .grid-3-col {
@@ -421,7 +428,8 @@ main {
 /* Stats Counter Row */
 .stats-row {
   display: flex;
-  gap: var(--spacing-36);
+  flex-wrap: wrap;
+  gap: var(--spacing-24);
   margin-top: var(--spacing-30);
   margin-bottom: var(--spacing-30);
 }
@@ -432,10 +440,14 @@ main {
 }
 
 .stat-num {
-  font-size: var(--text-heading-lg);
+  font-size: clamp(22px, 2.8vw, 40px);
   font-weight: var(--font-weight-extralight);
   color: var(--color-bone);
   letter-spacing: var(--tracking-heading-lg);
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  min-width: 8ch;
+  white-space: nowrap;
 }
 
 .stat-label {

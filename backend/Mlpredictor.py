@@ -58,6 +58,9 @@ def predict_stock(symbol):
     latest_vc = float(df['vol_change'].iloc[-1]) if 'vol_change' in df.columns else 0.0
 
     graph_df = df.reset_index()[["Date", "Close"]].copy()
+    # Newer yfinance returns timezone-aware DatetimeIndex; normalize to plain date string
+    if hasattr(graph_df["Date"].iloc[0], 'tz_localize') or str(graph_df["Date"].dtype).startswith("datetime64[ns,"):
+        graph_df["Date"] = graph_df["Date"].dt.tz_localize(None)
     graph_df["Date"] = graph_df["Date"].dt.strftime("%Y-%m-%d")
     graph = graph_df.to_dict(orient="records")
     
