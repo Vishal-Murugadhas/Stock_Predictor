@@ -5,6 +5,7 @@ from Mlpredictor import predict_stock
 import yfinance as yf
 import time
 from typing import List
+import requests
 
 app = FastAPI(title="StockSense API")
 
@@ -151,3 +152,36 @@ def get_indices():
 @app.post("/api/stocks")
 def get_stocks(request: BatchStockRequest):
     return batch_fetch_stock_stats(request.symbols)
+
+@app.get("/api/search")
+def search_stocks(q: str):
+    try:
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={q}&lang=en-US&region=IN&quotesCount=20&enableFuzzyQuery=true"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            quotes = data.get("quotes", [])
+            results = []
+            for item in quotes:
+                symbol = item.get("symbol")
+                quote_type = item.get("quoteType")
+                if not symbol or quote_type != "EQUITY":
+                    continue
+                sym_upper = symbol.upper()
+                if sym_upper.endswith(".NS") or sym_upper.endswith(".BO"):
+                    exch = "NSE" if sym_upper.endswith(".NS") else "BSE"
+                    results.append({
+                        "ticker": symbol,
+                        "name": item.get("longname") or item.get("shortname") or symbol,
+                        "exchange": exch,
+                        "sector": item.get("sectorDisp") or item.get("sector") or "Equity"
+                    })
+            # Sort: NSE (.NS) first, then BSE (.BO)
+            results.sort(key=lambda x: 0 if x["ticker"].upper().endswith(".NS") else 1)
+            return results
+    except Exception as e:
+        print(f"Error in backend search proxy: {e}")
+    return []

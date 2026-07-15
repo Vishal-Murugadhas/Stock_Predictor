@@ -458,43 +458,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function searchYahooFinance(query) {
-    const yahooUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=IN&quotesCount=20&enableFuzzyQuery=true&enableCb=true`;
-
-    // Try two CORS proxies in sequence
-    const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
-    ];
-
-    let data = null;
-    for (const proxyUrl of proxies) {
-      try {
-        const res = await fetch(proxyUrl, { headers: { 'x-requested-with': 'XMLHttpRequest' } });
-        if (res.ok) { data = await res.json(); break; }
-      } catch (_) { /* try next proxy */ }
-    }
-    if (!data) throw new Error('All proxies failed');
-
-    // ONLY show NSE (.NS) and BSE (.BO) listed Indian equities
-    const quotes = (data.quotes || []).filter(q => {
-      if (!q.symbol || q.quoteType !== 'EQUITY') return false;
-      const sym = q.symbol.toUpperCase();
-      return sym.endsWith('.NS') || sym.endsWith('.BO');
-    });
-
-    // .NS first, then .BO
-    quotes.sort((a, b) => {
-      const aScore = a.symbol.toUpperCase().endsWith('.NS') ? 0 : 1;
-      const bScore = b.symbol.toUpperCase().endsWith('.NS') ? 0 : 1;
-      return aScore - bScore;
-    });
-
-    return quotes.map(q => ({
-      ticker:   q.symbol,
-      name:     q.longname || q.shortname || q.symbol,
-      exchange: mapExchange(q.exchDisp, q.symbol),
-      sector:   q.sectorDisp || q.sector || 'Equity',
-    }));
+    const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
   }
 
   function showLoadingItem() {

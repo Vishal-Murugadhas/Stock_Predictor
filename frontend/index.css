@@ -920,6 +920,11 @@ footer p {
     grid-template-columns: 1fr;
     gap: var(--spacing-36);
   }
+
+  .predictor-wrapper {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-24);
+  }
   
   .sticky-column {
     position: relative;
